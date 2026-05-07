@@ -1,0 +1,73 @@
+Vagrant.require_version "<= 2.4.9"
+
+BOX = "centos/8"
+BOX_URL = "https://app.vagrantup.com/centos/boxes/8/versions/2011.0/providers/virtualbox.box"
+BOX_AUTO_UPDATE = false
+
+Vagrant.configure("2") do |config|
+
+	config.vm.box = BOX
+	config.vm.box_url = BOX_URL
+	config.vm.box_check_update = BOX_AUTO_UPDATE
+
+    
+	config.vm.provider "virtualbox" do |v|
+		v.memory = 2048
+		v.cpus = 2
+	end
+
+    config.vm.define "smhahS" do |control|
+	
+		config.vm.synced_folder "./config/", "/shared/config", type: "rsync"
+	
+		control.vm.hostname = "smhahS"
+		control.vm.network "forwarded_port", guest: 30080, host: 30080
+		control.vm.network "forwarded_port", guest: 8080, host: 8080
+		control.vm.network "private_network", ip: "192.168.56.120"
+		control.vm.provision "shell", inline: <<-SHELL
+			# curl -sfL https://get.k3s.io | K3S_TOKEN="v-42-inception-token" sh -s - server --node-ip="192.168.56.110" --write-kubeconfig-mode=644
+			# while ! sudo /usr/local/bin/kubectl get node smhahs | grep -q " Ready"; do
+			# 	echo "Waiting for smhahS to be Ready..."
+			# 	sleep 2
+			# done
+			# echo "smhahS k3s server is Ready"
+			# kubectl apply -f /shared/config/
+			###installing kubectl
+			curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+			chmod +x kubectl
+			sudo mv kubectl /usr/local/bin/
+			###
+			sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo # download docker repository
+			sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y # install docker from docker repository
+			sudo systemctl enable --now docker ### auto activate docker service when booting the machine
+			curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+			###using k3d without sudo###
+			sudo usermod -aG docker $USER
+			newgrp docker # sometime it didnt apply should execute it again.
+			k3d cluster create smhahS
+			kubectl create namespace argocd
+			kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+			kubectl config set-context --current --namespace=argocd
+			###
+		SHELL
+		control.vm.provision "shell", path: "./install.sh"
+	end
+
+	config.vm.provision "shell", inline: <<-SHELL
+		sudo systemctl start firewalld
+		sudo systemctl enable firewalld
+		firewall-cmd --permanent --add-port=80/tcp #need to test later if its okay to delete that rule
+		firewall-cmd --permanent --add-port=6443/tcp #api-server
+		firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 #pods
+		firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 #services
+		firewall-cmd --reload
+		sudo grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=1" ### use cgroup2 instead of tfs(or tnpodsfdsfds man3rf smitha) so k3s works
+		###for installing pything but can remove because no need for python if we dont use ansible"
+		sudo sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-*.repo
+		sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo
+		sudo dnf clean all
+		sudo dnf makecache
+		# sudo dnf install -y python3-pip
+		SHELL
+	config.vm.provision "shell", name: "Reboot", reboot: true
+end

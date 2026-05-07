@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd  # Important: put it in the right namespace
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"  # or handle TLS properly
+    traefik.ingress.kubernetes.io/router.entrypoints: web  # or websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    # - host: argocd.local  # Add a host (recommended)
+    - http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: argocd-server
+              port:
+                number: 80   # HTTP port (it redirects internally)
