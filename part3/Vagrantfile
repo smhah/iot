@@ -10,10 +10,10 @@ Vagrant.configure("2") do |config|
 	config.vm.box_url = BOX_URL
 	config.vm.box_check_update = BOX_AUTO_UPDATE
 
-    
+    config.vm.disk :disk, size: "50GB", primary: true
 	config.vm.provider "virtualbox" do |v|
-		v.memory = 2048
-		v.cpus = 2
+		v.memory = 12288  # 12GB
+		v.cpus = 4
 	end
 
     config.vm.define "smhahS" do |control|
@@ -42,15 +42,22 @@ Vagrant.configure("2") do |config|
 			sudo systemctl enable --now docker ### auto activate docker service when booting the machine
 			curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 			###using k3d without sudo###
-			sudo usermod -aG docker $USER
-			newgrp docker # sometime it didnt apply should execute it again.
-			k3d cluster create smhahS
-			kubectl create namespace argocd
-			kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-			kubectl config set-context --current --namespace=argocd
+			#  Create docker group if it doesn't exist
+			getent group docker || groupadd docker
+
+			#  Add the vagrant user to the docker group
+			usermod -aG docker vagrant
+
+			#  Restart Docker service (important after group changes sometimes)
+			sudo systemctl restart docker
+			#create k3s cluster with k3d
+			# sh /shared/config/install.sh
+			# k3d cluster create smhahS
+			# kubectl create namespace argocd
+			# kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+			# kubectl config set-context --current --namespace=argocd
 			###
 		SHELL
-		control.vm.provision "shell", path: "./install.sh"
 	end
 
 	config.vm.provision "shell", inline: <<-SHELL

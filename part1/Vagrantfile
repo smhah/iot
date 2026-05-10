@@ -1,0 +1,54 @@
+Vagrant.require_version "<= 2.4.9"
+
+BOX = "centos/8"
+BOX_URL = "https://app.vagrantup.com/centos/boxes/8/versions/2011.0/providers/virtualbox.box"
+BOX_AUTO_UPDATE = false
+
+Vagrant.configure("2") do |config|
+
+	config.vm.box = BOX
+	config.vm.box_url = BOX_URL
+	config.vm.box_check_update = BOX_AUTO_UPDATE
+
+	config.vm.provider "virtualbox" do |v|
+		v.memory = 1024
+		v.cpus = 1
+	end
+
+	config.vm.define "smhahS" do |control|
+		control.vm.hostname = "smhahS"
+		control.vm.network "private_network", ip: "192.168.56.110"
+		control.vm.provision "shell", inline: <<-SHELL
+			curl -sfL https://get.k3s.io | K3S_TOKEN="v-42-inception-token" sh -s - server --node-ip="192.168.56.110"
+			while ! sudo /usr/local/bin/kubectl get node smhahs | grep -q " Ready"; do
+				echo "Waiting for smhahS to be Ready..."
+				sleep 2
+			done
+			echo "smhahS is Ready. Joining smhahSW to the cluster..."
+		SHELL
+	end
+
+	config.vm.define "smhahSW" do |control|
+		control.vm.hostname = "smhahSW"
+		control.vm.network "private_network", ip: "192.168.56.111"
+		control.vm.provision "shell", inline: <<-SHELL
+			curl -sfL https://get.k3s.io | K3S_URL="https://192.168.56.110:6443" K3S_TOKEN="v-42-inception-token" sh -s - agent --node-ip="192.168.56.111"
+		SHELL
+	end
+
+	config.vm.provision "shell", inline: <<-SHELL
+		sudo systemctl start firewalld
+		sudo systemctl enable firewalld
+		firewall-cmd --permanent --add-port=6443/tcp #api-server
+		firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16 #pods
+		firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16 #services
+		firewall-cmd --reload
+		sudo grubby --update-kernel=ALL --args="systemd.unified_cgroup_hierarchy=1"
+		sudo sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-*.repo
+		sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo
+		sudo dnf clean all
+		sudo dnf makecache
+		sudo dnf install -y python3-pip
+		SHELL
+	config.vm.provision "shell", name: "Reboot", reboot: true
+end

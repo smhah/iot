@@ -26,17 +26,6 @@ for deploy in argocd-server argocd-repo-server; do
     done
     echo " Done."
 done
-# ----------------------
-#  Delete the initial secret
-# kubectl -n argocd delete secret argocd-initial-admin-secret --ignore-not-found
-
-# # 4. Set PREDEFINED PASSWORD ("password123")
-# NEW_PASSWORD_HASH='$2a$10$rByptvWM56S7AD6YKW3Vhe0X/p6S.F0.OQx/h.XpPz.19yZ0V0z2m'
-
-# echo "Applying predefined password and configuration..."
-# MTIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-# kubectl -n argocd patch secret argocd-secret \
-#   -p "{\"stringData\": {\"admin.password\": \"$NEW_PASSWORD_HASH\", \"admin.passwordMtime\": \"$MTIME\"}}"
 
 # Disable HTTPS redirect (very important for local)
 kubectl -n argocd patch configmap argocd-cmd-params-cm --type merge -p '{"data":{"server.insecure": "true"}}'
@@ -48,7 +37,7 @@ kubectl -n argocd rollout restart deployment argocd-server
 kubectl -n argocd apply -f /shared/config/argocd-ingress.yaml 
 
 #Give Argo-cd access to the private github repo
-kubectl -n argocd apply -f /shared/config/github-creds.yaml
+# kubectl -n argocd apply -f /shared/config/github-creds.yaml
 
 # Get Argocd Server Password
 # kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
@@ -58,3 +47,4 @@ kubectl apply -f /shared/config/argocd-app-config.yaml
 
 # Add argocd admin password
 kubectl patch secret argocd-secret   -n argocd   -p "{\"data\": {\"admin.password\": \"$(echo -n '$2a$10$GYWRhMltu5Y3dENNQG3cLuH19PbXSTkF1GYe654cdwdKRD5rdKaoW' | base64 | tr -d '\n')\"}}"
+

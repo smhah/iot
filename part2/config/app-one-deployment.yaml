@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-one-deployment
+spec:
+  selector:
+    matchLabels:
+      app: app-one
+  template:
+    metadata:
+      labels:
+        app: app-one
+    spec:
+      containers:
+      - name: app-one-container
+        image: hashicorp/http-echo # automatically listens on port 5678
+        args:
+          - "-text=Hello! This is App 1 running on smhahS"
+        ports:
+          - name: app-one-port
+            containerPort: 5678

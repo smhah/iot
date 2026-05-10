@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitlab-private-creds
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds  
+    # argocd.argoproj.io/secret-type: repo-creds   # Important: this makes it a credential template
+type: Opaque
+stringData:
+  type: git
+  url: http://gitlab-webservice-default.gitlab.svc.cluster.local:8181
+  username: root
+  password: glpat-fpy4grV_1oCuA9tQuMIUSW86MQp1OjEH.01.0w0ei0smb

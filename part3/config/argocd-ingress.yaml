@@ -6,7 +6,8 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - http:
+    - host: argocd.127.0.0.1.nip.io
+      http:
         paths:
           - path: /
             pathType: Prefix

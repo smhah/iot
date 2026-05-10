@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-three-deployment
+spec:
+  selector:
+    matchLabels:
+      app: app-three
+  template:
+    metadata:
+      labels:
+        app: app-three
+    spec:
+      containers:
+      - name: app-three-container
+        image: hashicorp/http-echo 
+        args:
+          - "-text=Hello! This is App 3 running on smhahS"
+        ports:
+          - name: app-three-port
+            containerPort: 5678

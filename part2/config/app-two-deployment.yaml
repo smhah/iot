@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-two-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-two
+  template:
+    metadata:
+      labels:
+        app: app-two
+    spec:
+      containers:
+      - name: app-two-container
+        image: hashicorp/http-echo 
+        args:
+          - "-text=Hello! This is App 2 running on smhahS"
+        ports:
+          - name: app-two-port
+            containerPort: 5678
